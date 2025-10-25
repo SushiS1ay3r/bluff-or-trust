@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trust or Bluff — Card Game</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="header-left">
+        <h1>Trust or Bluff</h1>
+        <p class="subtitle">Reach over 9 and you lose</p>
+      </div>
+      <div class="header-actions">
+        <button id="newGame" class="btn primary">New Round</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="status">
+        <div class="row">
+          <div>Total: <span id="total" class="big-total">0</span> / 9</div>
+          <div>Round: <span id="round">1</span></div>
+          <div>Turn: <span id="turn">-</span></div>
+        </div>
+        <div class="row">
+          <div>You — Bluffs: <span id="humanBluffs">1</span></div>
+          <div>AI — Bluffs: <span id="aiBluffs">1</span></div>
+        </div>
+        <div id="message" class="message"></div>
+      </section>
+
+      <section class="board">
+        <div class="ai-area">
+          <h2>AI</h2>
+          <div id="aiHand" class="hand hidden" title="AI hand is hidden"></div>
+          <div id="aiPlay" class="play"></div>
+          <div class="pileWrap">
+            <div class="pileLabel">AI Played</div>
+            <div id="aiPile" class="pile"></div>
+          </div>
+        </div>
+
+        <div class="human-area">
+          <h2>Your Hand</h2>
+          <div id="humanHand" class="hand"></div>
+
+          <div id="actionBar" class="actions hidden">
+            <div class="row gap">
+              <button id="playUp" class="btn">Play Face-Up (Trust)</button>
+              <button id="playDown" class="btn">Play Face-Down (Bluff)</button>
+            </div>
+            <div id="claimBar" class="row gap hidden">
+              <span>Claim value:</span>
+              <button data-claim="0" class="btn claim">0</button>
+              <button data-claim="1" class="btn claim">1</button>
+              <button data-claim="2" class="btn claim">2</button>
+              <button data-claim="3" class="btn claim">3</button>
+            </div>
+          </div>
+
+          <div id="trustBar" class="actions hidden">
+            <div class="row gap">
+              <button id="trustBtn" class="btn">Trust</button>
+              <button id="callBtn" class="btn">Call Bluff</button>
+            </div>
+          </div>
+
+          <div id="keepLoseBar" class="actions hidden">
+            <div class="row gap">
+              <button id="keepBtn" class="btn">Keep (add to total)</button>
+              <button id="loseBtn" class="btn">Lose (discard)</button>
+              <button id="stealBtn" class="btn hidden">Steal (take into hand)</button>
+            </div>
+          </div>
+
+          <div class="pileWrap">
+            <div class="pileLabel">You Played</div>
+            <div id="humanPile" class="pile"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="table">
+        <h3>Table</h3>
+        <div id="tableList" class="tableList"></div>
+      </section>
+
+      <section class="controls">
+        <button id="playAgain" class="btn hidden">Play Again?</button>
+      </section>
+
+      
+
+      <section class="history">
+        <h3>History</h3>
+        <ol id="history"></ol>
+      </section>
+    </main>
+  </div>
+
+  <!-- Win/Lose Popup Overlay -->
+  <div id="overlay" class="overlay hidden" aria-live="assertive" aria-atomic="true">
+    <div class="overlay-box">
+      <div id="overlayMsg" class="overlay-msg">You won!</div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

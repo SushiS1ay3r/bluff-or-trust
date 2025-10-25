@@ -1,0 +1,69 @@
+*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0;background:#0b1220;color:#e6ebff}
+.app{max-width:1100px;margin:0 auto;padding:24px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+header h1{margin:0 0 4px;font-size:28px}
+.subtitle{margin:0;color:#9fb3ff;letter-spacing:.8px;word-spacing:1px;margin-bottom:12px}
+.header-left{display:flex;flex-direction:column}
+.header-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
+.status{background:#121a2b;border:1px solid #223055;border-radius:10px;padding:12px;margin-bottom:16px}
+.status .row{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+.status .big-total{font-size:32px;font-weight:800;color:#ffda6b}
+.message{margin-top:8px;color:#ffda6b}
+.board{display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:800px){.board{grid-template-columns:1fr 1fr}}
+.ai-area,.human-area{background:#121a2b;border:1px solid #223055;border-radius:10px;padding:12px}
+h2{margin-top:0}
+.hand{display:flex;gap:10px;flex-wrap:wrap;min-height:106px}
+.card{width:72px;height:104px;border-radius:10px;background:#ffffff;border:2px solid #e2e2e2;display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:pointer;position:relative;transition:transform .1s ease, box-shadow .1s ease;overflow:hidden}
+/* Colored themes inspired by provided image */
+.card.theme-v0{background:#c91f3b;border-color:#9e152c;color:#fff}
+.card.theme-v1{background:#2d63c8;border-color:#214a97;color:#fff}
+.card.theme-v2{background:#1e9a57;border-color:#187a46;color:#fff}
+.card.theme-v3{background:#e0b321;border-color:#b89016;color:#fff}
+/* Big background shape */
+.card::before{content:attr(data-shape);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:64px;color:rgba(0,0,0,.35);pointer-events:none;transform:scale(1.2)}
+.card .bignum{position:relative;z-index:1;font-size:36px;font-weight:800;line-height:1.1;text-shadow:0 2px 2px rgba(0,0,0,.25)}
+.card:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(0,0,0,.25)}
+.card.disabled{opacity:.5;cursor:not-allowed}
+.card.selected{outline:3px solid #00b4ff}
+.hidden{display:none}
+.actions{margin-top:12px}
+.actions #claimBar{margin-top:12px}
+.row{display:flex;align-items:center}
+.gap{gap:10px}
+.btn{background:#1b2a4a;color:#e6ebff;border:1px solid #33508e;border-radius:8px;padding:8px 12px;cursor:pointer}
+.btn:hover{background:#203159}
+.btn.primary{background:#2f66ff;border-color:#1c3dcc}
+.btn.claim{padding:6px 10px;font-size:14px;line-height:1}
+.btn.active{outline:2px solid #00b4ff; box-shadow:0 0 0 3px rgba(0,180,255,.25)}
+.btn.claim.selected{outline:2px solid #00b4ff}
+.play{min-height:26px;color:#9fb3ff}
+.controls{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+.legend{margin-top:24px;color:#c9d4ff}
+
+/* Piles and history */
+.pileWrap{margin-top:12px}
+.pileLabel{font-size:12px;color:#9fb3ff;margin-bottom:6px}
+.pile{display:flex;gap:6px;flex-wrap:wrap;min-height:32px}
+.card.mini{width:44px;height:64px;border-radius:6px}
+.card.mini .bignum{font-size:18px}
+.orderWrap{margin-top:10px}
+.orderList{display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-height:24px}
+.orderItem{background:#1b2a4a;border:1px solid #33508e;border-radius:12px;padding:2px 8px;font-size:12px;color:#e6ebff}
+.orderArrow{color:#9fb3ff}
+.history{margin-top:24px;background:#121a2b;border:1px solid #223055;border-radius:10px;padding:12px}
+.history h3{margin:0 0 8px}
+.history ol{margin:0;padding-left:18px;max-height:220px;overflow:auto}
+.history li{color:#c9d4ff;margin-bottom:4px}
+
+/* Table (global sequence of played cards) */
+.table{margin-top:16px;background:#121a2b;border:1px solid #223055;border-radius:10px;padding:12px}
+.table h3{margin:0 0 8px}
+.tableList{display:flex;gap:8px;flex-wrap:wrap;align-items:center;min-height:28px;overflow-x:auto;padding-bottom:4px}
+
+/* Overlay popup for win/lose */
+.overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(6,10,22,.72);backdrop-filter:blur(2px);z-index:9999}
+.overlay.hidden{display:none}
+.overlay-box{background:linear-gradient(180deg,#142042,#0d1733);border:1px solid #3a56a1;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.45);padding:28px 36px;max-width:80vw}
+.overlay-msg{font-size:40px;font-weight:900;letter-spacing:.5px;color:#ffda6b;text-align:center;text-shadow:0 3px 10px rgba(0,0,0,.45)}
