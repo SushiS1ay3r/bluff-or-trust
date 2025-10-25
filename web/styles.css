@@ -41,7 +41,7 @@ h2{margin-top:0}
 .btn.claim{padding:6px 10px;font-size:14px;line-height:1}
 .btn.active{outline:2px solid #00b4ff; box-shadow:0 0 0 3px rgba(0,180,255,.25)}
 .btn.claim.selected{outline:2px solid #00b4ff}
-.play{min-height:26px;color:#9fb3ff}
+.play{min-height:120px;color:#9fb3ff;display:flex;align-items:center;gap:8px}
 .controls{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
 .legend{margin-top:24px;color:#c9d4ff}
 

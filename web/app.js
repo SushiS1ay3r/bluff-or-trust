@@ -158,9 +158,9 @@ const btnKeep = el('#keepBtn');
 const btnLose = el('#loseBtn');
 const btnSteal = el('#stealBtn');
 const btnNew = el('#newGame');
-const btnAgain = el('#playAgain');
 const overlayEl = el('#overlay');
 const overlayMsgEl = el('#overlayMsg');
+const overlayAgainEl = el('#overlayAgain');
 
 let G = null; // game state
 let selectedValue = null; // value user picked (0..3)
@@ -205,7 +205,7 @@ function render(){
   aiHandEl.innerHTML = '';
   for(let i=0;i<G.ai.hand.length;i++){
     const back = document.createElement('div');
-    back.className = 'card mini back';
+    back.className = 'card back';
     back.setAttribute('data-shape','?');
     back.innerHTML = `<div class="bignum">?<\/div>`;
     aiHandEl.appendChild(back);
@@ -214,7 +214,7 @@ function render(){
   // If AI has a pending face-down card on the table, show its back in the play area
   if(G.pending && G.pending.actor==='AI'){
     const back = document.createElement('div');
-    back.className = 'card mini back';
+    back.className = 'card back';
     back.setAttribute('data-shape','?');
     back.innerHTML = `<div class="bignum">?<\/div>`;
     aiPlayEl.appendChild(back);
@@ -243,9 +243,7 @@ function render(){
     claimBar.classList.add('hidden');
     claimBar.style.display = 'none';
     awaitingClaim = false;
-    btnAgain.classList.remove('hidden');
   } else {
-    btnAgain.classList.add('hidden');
     // Ensure claim values only appear during bluff flow
     if(awaitingClaim){
       claimBar.classList.remove('hidden');
@@ -341,8 +339,10 @@ function startNewRound(){
 function proceedTurn(){
   render();
   if(G.over) return;
-  const drew = maybeDealTieBreaker();
-  if(!drew){
+  const dealt = ensureHandsHaveCards();
+  if(dealt){
+    render();
+  } else {
     setMessage('');
   }
   // Ensure claim values are hidden unless Bluff was just chosen
@@ -355,23 +355,26 @@ function proceedTurn(){
   }
 }
 
-// If both players run out of cards (tie state), deal one card each and continue
-function maybeDealTieBreaker(){
-  if(G.human.hand.length===0 && G.ai.hand.length===0){
-    // if deck has fewer than 2, rebuild a fresh deck
-    if(G.deck.length < 2){
+// Ensure no one is stuck without cards: if either hand is empty, deal one card to that player (rebuild deck if needed)
+function ensureHandsHaveCards(){
+  let dealt = false;
+  const needHuman = (G.human.hand.length === 0);
+  const needAI = (G.ai.hand.length === 0);
+  const needCount = (needHuman?1:0) + (needAI?1:0);
+  if(needCount > 0){
+    if(G.deck.length < needCount){
       G.deck = makeDeck();
     }
-    const h = G.deck.pop();
-    const a = G.deck.pop();
-    if(h) G.human.giveCard(h);
-    if(a) G.ai.giveCard(a);
-    log('Tie-break: both players draw 1 card.');
-    setMessage('Tie-break: both players draw 1 card.');
-    render();
-    return true;
+    if(needHuman){
+      const h = G.deck.pop();
+      if(h){ G.human.giveCard(h); dealt = true; log('Auto-deal: Human draws 1 card.'); }
+    }
+    if(needAI){
+      const a = G.deck.pop();
+      if(a){ G.ai.giveCard(a); dealt = true; log('Auto-deal: AI draws 1 card.'); }
+    }
   }
-  return false;
+  return dealt;
 }
 
 function checkOverflow(actorName){
@@ -384,9 +387,6 @@ function checkOverflow(actorName){
       const playerLost = (actorName === 'Human');
       overlayMsgEl.textContent = playerLost ? 'You lose!' : 'You won!';
       overlayEl.classList.remove('hidden');
-      setTimeout(()=>{
-        overlayEl.classList.add('hidden');
-      }, 3000);
     }
     render();
     return true;
@@ -632,10 +632,12 @@ btnNew.addEventListener('click', ()=>{
   startNewRound();
 });
 
-btnAgain.addEventListener('click', ()=>{
-  roundNum += 1;
-  startNewRound();
-});
+if(overlayAgainEl){
+  overlayAgainEl.addEventListener('click', ()=>{
+    roundNum += 1;
+    startNewRound();
+  });
+}
 
 // bootstrap
 startNewRound();
