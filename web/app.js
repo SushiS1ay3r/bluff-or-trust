@@ -443,7 +443,8 @@ document.querySelectorAll('.claim').forEach(btn=>{
         const aiChoice = G.ai.resolveZeroKeepOrSteal({total:G.total, actor:'Human'});
         if(aiChoice==='k'){ G.total += played.value; }
         G.humanPlayed.push(played);
-        G.tableOrder.push(played);
+        // Only record to table if not stolen back into AI hand
+        if(aiChoice!=='s'){ G.tableOrder.push(played); }
         if(aiChoice==='s'){ G.ai.giveCard(played); }
         log(`Your card revealed ${played.value} (truth; claimed 0). AI chose to ${aiChoice==='k'?'Keep':'Steal'}. Total: ${G.total}.`);
         setMessage(`AI chooses to ${aiChoice==='k'?'Keep':'Steal'}. Revealed: 0. Total: ${G.total}`);
@@ -592,7 +593,8 @@ function resolveAiFaceDown(call){
       const aiChoice = G.ai.resolveZeroKeepOrSteal({total:G.total, actor:'AI'});
       if(aiChoice==='k'){ G.total += played.value; }
       G.aiPlayed.push(played);
-      G.tableOrder.push(played);
+      // Only record to table if not stolen back into AI hand
+      if(aiChoice!=='s'){ G.tableOrder.push(played); }
       if(aiChoice==='s'){ G.ai.giveCard(played); }
       log(`AI chooses to ${aiChoice==='k'? 'Keep' : 'Steal'}. Revealed 0 (truth). Total: ${G.total}.`);
       setMessage(`AI chooses to ${aiChoice==='k'? 'Keep' : 'Steal'}. Revealed: 0. Total: ${G.total}`);
