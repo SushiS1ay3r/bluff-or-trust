@@ -81,17 +81,32 @@ class AdaptiveAI extends PlayerBase{
     const x = ctx.total + actual;
     // If keeping would bust: decide based on whose card it is
     if (x > TOTAL_TARGET) {
-      // If the card belongs to the opponent (ctx.actor === 'Human'), keeping makes them lose -> good for AI
+      // If the card belongs to the opponent (ctx.actor === 'Human'), keeping makes them lose immediately
       // If the card is AI's own, keeping would make AI lose -> avoid
       return ctx.actor === 'Human' ? 'k' : 'l';
     }
-    // Otherwise, use a simple heuristic: keep when it keeps pressure (<=1 away), else lose
-    return (TOTAL_TARGET - x) <= 1 ? 'k' : 'l';
+    const margin = TOTAL_TARGET - x; // how far from bust after keeping
+    // Strategy differs based on whose card this is, because it determines who plays next
+    if (ctx.actor === 'AI') {
+      // This is AI's own card, and after resolution, Human plays next.
+      // Pressure the Human when safe; keep more aggressively.
+      if (margin <= 1) return 'k';     // take it to 8 or 9 to corner Human
+      if (margin >= 4) return 'l';     // very low total; conserve options
+      return 'k';                      // moderate totals: keep pressure
+    } else {
+      // This is Human's card, and after resolution, AI plays next.
+      // Avoid painting ourselves into a corner on our upcoming turn.
+      if (margin <= 1) return 'l';     // don't leave ourselves at 8/9
+      if (margin >= 4) return 'k';     // low total: safe to keep
+      return 'l';                      // mid-high totals: play it safe
+    }
   }
   resolveZeroKeepOrSteal(ctx){
-    // Simple heuristic: favor stealing 0 to reuse later
-    // Slight bias toward stealing unless near end (randomized)
-    return Math.random() < 0.65 ? 's' : 'k'; // 's' = steal, 'k' = keep
+    // Prefer stealing zeros so AI has a safety card when it needs it soon.
+    // If Human played the card, AI plays next -> always steal to have a safe play.
+    if (ctx.actor === 'Human') return 's';
+    // If AI played the card (Human plays next), stealing is still generally useful; keep occasionally for variety.
+    return Math.random() < 0.7 ? 's' : 'k';
   }
 }
 
