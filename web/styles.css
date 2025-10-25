@@ -9,7 +9,7 @@ header h1{margin:0 0 4px;font-size:28px}
 .status{background:#121a2b;border:1px solid #223055;border-radius:10px;padding:12px;margin-bottom:16px}
 .status .row{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
 .status .big-total{font-size:32px;font-weight:800;color:#ffda6b}
-.message{margin-top:8px;color:#ffda6b}
+.message{margin:0 0 8px;color:#ffda6b;font-size:20px;font-weight:800;letter-spacing:.3px}
 .board{display:grid;grid-template-columns:1fr;gap:16px}
 @media(min-width:800px){.board{grid-template-columns:1fr 1fr}}
 .ai-area,.human-area{background:#121a2b;border:1px solid #223055;border-radius:10px;padding:12px;display:flex;flex-direction:column}
@@ -75,3 +75,5 @@ h2{margin-top:0}
 .overlay.hidden{display:none}
 .overlay-box{background:linear-gradient(180deg,#142042,#0d1733);border:1px solid #3a56a1;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.45);padding:28px 36px;max-width:80vw}
 .overlay-msg{font-size:40px;font-weight:900;letter-spacing:.5px;color:#ffda6b;text-align:center;text-shadow:0 3px 10px rgba(0,0,0,.45)}
+
+
