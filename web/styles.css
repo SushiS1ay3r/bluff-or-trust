@@ -12,7 +12,7 @@ header h1{margin:0 0 4px;font-size:28px}
 .message{margin-top:8px;color:#ffda6b}
 .board{display:grid;grid-template-columns:1fr;gap:16px}
 @media(min-width:800px){.board{grid-template-columns:1fr 1fr}}
-.ai-area,.human-area{background:#121a2b;border:1px solid #223055;border-radius:10px;padding:12px}
+.ai-area,.human-area{background:#121a2b;border:1px solid #223055;border-radius:10px;padding:12px;display:flex;flex-direction:column}
 h2{margin-top:0}
 .hand{display:flex;gap:10px;flex-wrap:wrap;min-height:106px}
 .card{width:72px;height:104px;border-radius:10px;background:#ffffff;border:2px solid #e2e2e2;display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:pointer;position:relative;transition:transform .1s ease, box-shadow .1s ease;overflow:hidden}
@@ -47,6 +47,8 @@ h2{margin-top:0}
 
 /* Piles and history */
 .pileWrap{margin-top:12px}
+/* Keep the Played pile anchored at the bottom of each panel */
+.ai-area .pileWrap,.human-area .pileWrap{margin-top:auto}
 .pileLabel{font-size:12px;color:#9fb3ff;margin-bottom:6px}
 .pile{display:flex;gap:6px;flex-wrap:wrap;min-height:32px}
 .card.mini{width:44px;height:64px;border-radius:6px}

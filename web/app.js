@@ -460,11 +460,14 @@ document.querySelectorAll('.claim').forEach(btn=>{
       // AI chooses (may use zero special)
       if(isZeroSpecial({played, claim, truth})){
         const aiChoice = G.ai.resolveZeroKeepOrSteal({total:G.total, actor:'Human'});
-        if(aiChoice==='k'){ G.total += played.value; }
-        G.humanPlayed.push(played);
-        // Only record to table if not stolen back into AI hand
-        if(aiChoice!=='s'){ G.tableOrder.push(played); }
-        if(aiChoice==='s'){ G.ai.giveCard(played); }
+        if(aiChoice==='k'){
+          G.total += played.value;
+          G.humanPlayed.push(played);
+          G.tableOrder.push(played);
+        } else {
+          // Steal: return zero to AI hand; do not add to any pile or table
+          G.ai.giveCard(played);
+        }
         log(`Your card revealed ${played.value} (truth; claimed 0). AI chose to ${aiChoice==='k'?'Keep':'Steal'}. Total: ${G.total}.`);
         setMessage(`AI chooses to ${aiChoice==='k'?'Keep':'Steal'}. Revealed: 0. Total: ${G.total}`);
       } else {
@@ -511,7 +514,8 @@ btnKeep.addEventListener('click', ()=>{
   log(`You chose Keep on AI's card. Revealed ${displayValue(played.value)}${truth? ' (truth)' : ` (lied; claimed ${displayValue(claim)})`}. Total: ${G.total}.`);
   }
   if(checkOverflow(lastPendingActor||'Human')) return;
-  G.turn = 'AI';
+  // Next turn depends on whose card this was
+  G.turn = (lastPendingActor === 'AI') ? 'Human' : 'AI';
   proceedTurn();
 });
 
@@ -529,7 +533,8 @@ btnLose.addEventListener('click', ()=>{
   log(`You chose Lose on AI's card. Revealed ${displayValue(played.value)}${truth? ' (truth)' : ` (lied; claimed ${displayValue(claim)})`}. Total remains ${G.total}.`);
   }
   if(checkOverflow(lastPendingActor||'Human')) return;
-  G.turn = 'AI';
+  // Next turn depends on whose card this was
+  G.turn = (lastPendingActor === 'AI') ? 'Human' : 'AI';
   proceedTurn();
 });
 
@@ -542,18 +547,19 @@ btnSteal.addEventListener('click', ()=>{
   keepLoseBar.classList.add('hidden');
   G.pending = null;
   if(lastPendingActor==='Human'){
-    G.humanPlayed.push(played);
+    // Human steals their own 0 back into hand: don't add to piles or table
     G.human.giveCard(played);
     setMessage(`You steal the 0 back into your hand. Total: ${G.total}`);
     log(`You chose Steal. Your 0 returns to your hand. Total remains ${G.total}.`);
   } else if(lastPendingActor==='AI'){
-    G.aiPlayed.push(played);
+    // Human steals AI's 0 into hand: don't add to piles or table
     G.human.giveCard(played);
     setMessage(`You steal AI's 0 into your hand. Total: ${G.total}`);
     log(`You chose Steal. You took AI's 0 into your hand. Total remains ${G.total}.`);
   }
   if(checkOverflow(lastPendingActor||'Human')) return;
-  G.turn = 'AI';
+  // Next turn depends on whose card this was
+  G.turn = (lastPendingActor === 'AI') ? 'Human' : 'AI';
   proceedTurn();
 });
 
@@ -606,11 +612,14 @@ function resolveAiFaceDown(call){
     // AI chooses
     if(isZeroSpecial({played, claim, truth})){
       const aiChoice = G.ai.resolveZeroKeepOrSteal({total:G.total, actor:'AI'});
-      if(aiChoice==='k'){ G.total += played.value; }
-      G.aiPlayed.push(played);
-      // Only record to table if not stolen back into AI hand
-      if(aiChoice!=='s'){ G.tableOrder.push(played); }
-      if(aiChoice==='s'){ G.ai.giveCard(played); }
+      if(aiChoice==='k'){
+        G.total += played.value;
+        G.aiPlayed.push(played);
+        G.tableOrder.push(played);
+      } else {
+        // Steal: return zero to AI hand; do not add to any pile or table
+        G.ai.giveCard(played);
+      }
       log(`AI chooses to ${aiChoice==='k'? 'Keep' : 'Steal'}. Revealed 0 (truth). Total: ${G.total}.`);
       setMessage(`AI chooses to ${aiChoice==='k'? 'Keep' : 'Steal'}. Revealed: 0. Total: ${G.total}`);
     } else {
