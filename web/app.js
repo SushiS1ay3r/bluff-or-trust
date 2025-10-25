@@ -201,6 +201,25 @@ function render(){
   // AI play area
   aiPlayEl.textContent = '';
 
+  // AI hand (render hidden backs equal to AI hand size)
+  aiHandEl.innerHTML = '';
+  for(let i=0;i<G.ai.hand.length;i++){
+    const back = document.createElement('div');
+    back.className = 'card mini back';
+    back.setAttribute('data-shape','?');
+    back.innerHTML = `<div class="bignum">?<\/div>`;
+    aiHandEl.appendChild(back);
+  }
+
+  // If AI has a pending face-down card on the table, show its back in the play area
+  if(G.pending && G.pending.actor==='AI'){
+    const back = document.createElement('div');
+    back.className = 'card mini back';
+    back.setAttribute('data-shape','?');
+    back.innerHTML = `<div class="bignum">?<\/div>`;
+    aiPlayEl.appendChild(back);
+  }
+
   // Render piles
   renderPile(humanPileEl, G.humanPlayed);
   renderPile(aiPileEl, G.aiPlayed);
@@ -449,10 +468,10 @@ document.querySelectorAll('.claim').forEach(btn=>{
         log(`Your card revealed ${played.value} (truth; claimed 0). AI chose to ${aiChoice==='k'?'Keep':'Steal'}. Total: ${G.total}.`);
         setMessage(`AI chooses to ${aiChoice==='k'?'Keep':'Steal'}. Revealed: 0. Total: ${G.total}`);
       } else {
-        const dec = G.ai.resolveKeepOrLose(played.value, claim, {total:G.total, called:decision, truth, actor:'Human'});
-        if(dec==='k'){ G.total += played.value; }
-        G.humanPlayed.push(played);
-        G.tableOrder.push(played);
+  const dec = G.ai.resolveKeepOrLose(played.value, claim, {total:G.total, called:decision, truth, actor:'Human'});
+  if(dec==='k'){ G.total += played.value; }
+  G.humanPlayed.push(played);
+  if(dec==='k'){ G.tableOrder.push(played); }
         log(`Your card revealed ${played.value} (${truth? 'truth' : `lied; claimed ${claim}`}). AI chose to ${dec==='k'? 'Keep' : 'Lose'}. Total: ${G.total}.`);
         setMessage(`AI chooses to ${dec==='k'? 'Keep' : 'Lose'}. Revealed: ${displayValue(played.value)}${truth? ' (truth)' : ` (lied; claimed ${displayValue(claim)})`}. Total: ${G.total}`);
       }
@@ -504,11 +523,9 @@ btnLose.addEventListener('click', ()=>{
   setMessage(`You choose to Lose. Revealed: ${displayValue(played.value)}${truth? ' (truth)' : ` (lied; claimed ${displayValue(claim)})`}. Total: ${G.total}`);
   if(lastPendingActor==='Human'){
     G.humanPlayed.push(played);
-  G.tableOrder.push(played);
   log(`You chose Lose. Your card was ${displayValue(played.value)}${truth? ' (truth)' : ` (lied; claimed ${displayValue(claim)})`}. Total remains ${G.total}.`);
   } else if(lastPendingActor==='AI'){
     G.aiPlayed.push(played);
-  G.tableOrder.push(played);
   log(`You chose Lose on AI's card. Revealed ${displayValue(played.value)}${truth? ' (truth)' : ` (lied; claimed ${displayValue(claim)})`}. Total remains ${G.total}.`);
   }
   if(checkOverflow(lastPendingActor||'Human')) return;
@@ -526,13 +543,11 @@ btnSteal.addEventListener('click', ()=>{
   G.pending = null;
   if(lastPendingActor==='Human'){
     G.humanPlayed.push(played);
-    G.tableOrder.push(played);
     G.human.giveCard(played);
     setMessage(`You steal the 0 back into your hand. Total: ${G.total}`);
     log(`You chose Steal. Your 0 returns to your hand. Total remains ${G.total}.`);
   } else if(lastPendingActor==='AI'){
     G.aiPlayed.push(played);
-    G.tableOrder.push(played);
     G.human.giveCard(played);
     setMessage(`You steal AI's 0 into your hand. Total: ${G.total}`);
     log(`You chose Steal. You took AI's 0 into your hand. Total remains ${G.total}.`);
@@ -599,10 +614,10 @@ function resolveAiFaceDown(call){
       log(`AI chooses to ${aiChoice==='k'? 'Keep' : 'Steal'}. Revealed 0 (truth). Total: ${G.total}.`);
       setMessage(`AI chooses to ${aiChoice==='k'? 'Keep' : 'Steal'}. Revealed: 0. Total: ${G.total}`);
     } else {
-      const dec = G.ai.resolveKeepOrLose(played.value, claim, {total:G.total, called:call, truth, actor:'AI'});
-      if(dec==='k'){ G.total += played.value; }
-      G.aiPlayed.push(played);
-      G.tableOrder.push(played);
+  const dec = G.ai.resolveKeepOrLose(played.value, claim, {total:G.total, called:call, truth, actor:'AI'});
+  if(dec==='k'){ G.total += played.value; }
+  G.aiPlayed.push(played);
+  if(dec==='k'){ G.tableOrder.push(played); }
       log(`AI chooses to ${dec==='k'? 'Keep' : 'Lose'}. Revealed ${played.value}${truth? ' (truth)' : ` (lied; claimed ${claim})`}. Total: ${G.total}.`);
       setMessage(`AI chooses to ${dec==='k'? 'Keep' : 'Lose'}. Revealed: ${displayValue(played.value)}${truth? ' (truth)' : ` (lied; claimed ${displayValue(claim)})`}. Total: ${G.total}`);
     }
