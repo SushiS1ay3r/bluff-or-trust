@@ -161,6 +161,15 @@ const btnNew = el('#newGame');
 const overlayEl = el('#overlay');
 const overlayMsgEl = el('#overlayMsg');
 const overlayAgainEl = el('#overlayAgain');
+const strategistToggleEl = el('#strategistToggle');
+
+let strategistEnabled = false;
+if (strategistToggleEl) {
+  strategistToggleEl.addEventListener('change', () => {
+    strategistEnabled = !!strategistToggleEl.checked;
+    log(`Strategist ${strategistEnabled ? 'enabled' : 'disabled'}.`);
+  });
+}
 
 let G = null; // game state
 let selectedValue = null; // value user picked (0..3)
@@ -259,6 +268,46 @@ function setMessage(txt){ msgEl.textContent = txt || ''; }
 
 function log(line){
   G.history.push(line);
+}
+
+function summarizeForStrategist(context, extra = {}){
+  const aiHandCounts = G.ai.hand.reduce((acc,c)=>{acc[c.value]=(acc[c.value]||0)+1;return acc;},{});
+  const safeCount = G.ai.hand.filter(c=> G.total + c.value <= TOTAL_TARGET).length;
+  const riskyCount = G.ai.hand.length - safeCount;
+  const summary = {
+    context,
+    total: G.total,
+    turn: G.turn,
+    bluffs: { human: G.human.bluffs, ai: G.ai.bluffs },
+    hands: { humanSize: G.human.hand.length, aiSize: G.ai.hand.length, aiCounts: aiHandCounts },
+    ai: { safeCount, riskyCount },
+    pending: G.pending ? {
+      actor: G.pending.actor,
+      claim: G.pending.claim,
+      truth: !!G.pending.truth,
+      playedValue: G.pending.played?.value
+    } : null,
+    recent: G.history.slice(-8),
+  };
+  return Object.assign(summary, extra || {});
+}
+
+async function askStrategist(context, extra){
+  const body = { context, summary: summarizeForStrategist(context, extra) };
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 3000);
+  try{
+    const resp = await fetch('http://localhost:3000/api/strategy',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal
+    });
+    clearTimeout(t);
+    if(!resp.ok) throw new Error('Strategist HTTP '+resp.status);
+    return await resp.json();
+  }catch(err){
+    clearTimeout(t);
+    log('Strategist unavailable, using default.');
+    return null;
+  }
 }
 
 // Special rule detection: actual zero claimed as zero and truth
@@ -421,7 +470,7 @@ btnPlayDown.addEventListener('click', ()=>{
 });
 
 document.querySelectorAll('.claim').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
+  btn.addEventListener('click', async ()=>{
     if(G.turn!=='Human' || selectedValue==null) return;
     // highlight the tapped claim briefly
     document.querySelectorAll('.claim').forEach(b=> b.classList.remove('selected'));
@@ -433,8 +482,20 @@ document.querySelectorAll('.claim').forEach(btn=>{
     G.human.bluffs -= 1;
     setMessage(`You play a card face-down and claim ${displayValue(claim)}.`);
     log(`You played a card face-down and claimed ${displayValue(claim)}.`);
-    // AI decides trust or call
-    const decision = G.ai.decideOnBluff(claim, G.total);
+    // AI decides trust or call (use strategist if enabled)
+    let decision = 't';
+    if (strategistEnabled){
+      const strat = await askStrategist('decideOnBluff', { opponentClaim: claim });
+      if (strat && strat.action==='decideOnBluff' && (strat.trustCall==='t' || strat.trustCall==='b')){
+        decision = strat.trustCall;
+        const src = strat.meta?.source || 'unknown';
+        log(`[Strategist:${src}] decideOnBluff: ${decision==='t'?'trust':'call'}`);
+      } else {
+        decision = G.ai.decideOnBluff(claim, G.total);
+      }
+    } else {
+      decision = G.ai.decideOnBluff(claim, G.total);
+    }
     if(decision==='t'){
       setMessage(`You play a card face-down and claim ${claim}. AI trusts.`);
       log(`AI trusts.`);
@@ -564,9 +625,42 @@ btnSteal.addEventListener('click', ()=>{
 });
 
 // AI turn
-function aiTurn(){
+async function aiTurn(){
   if(G.over) return;
-  const decision = G.ai.choosePlay(G.total);
+  let decision = null;
+  let usedStrategist = false;
+  if (strategistEnabled){
+    const strat = await askStrategist('choosePlay', {});
+    if (strat && strat.action === 'choosePlay' && strat.recommend){
+      const rec = strat.recommend;
+      if (rec.mode === 'up'){
+        decision = G.ai.choosePlay(G.total);
+        if (decision.mode !== 'up'){
+          const safe = G.ai.hand.filter(c=> G.total + c.value <= TOTAL_TARGET).sort((a,b)=>b.value-a.value);
+          const choice = (safe[0] || [...G.ai.hand].sort((a,b)=>a.value-b.value)[0]);
+          const idx = G.ai.hand.indexOf(choice);
+          const real = G.ai.removeCardByIndex(idx);
+          decision = { mode:'up', real, claim: real.value };
+        }
+        usedStrategist = true;
+        const src = strat.meta?.source || 'unknown';
+        log(`[Strategist:${src}] choosePlay: mode=up`);
+      } else if (rec.mode === 'down' && G.ai.bluffs>0){
+        const real = G.ai.hand[Math.floor(Math.random()*G.ai.hand.length)];
+        const idx = G.ai.hand.indexOf(real);
+        const played = G.ai.removeCardByIndex(idx);
+        G.ai.bluffs -= 1;
+        const claim = Math.max(0, Math.min(3, Number(rec.claim ?? 0)));
+        decision = { mode:'down', real: played, claim };
+        usedStrategist = true;
+        const src = strat.meta?.source || 'unknown';
+        log(`[Strategist:${src}] choosePlay: mode=down claim=${claim}`);
+      }
+    }
+  }
+  if(!decision){
+    decision = G.ai.choosePlay(G.total);
+  }
   if(decision.mode==='up'){
     G.total += decision.real.value;
   setMessage(`AI plays: ${displayValue(decision.real.value)}. Total: ${G.total}`);
@@ -592,7 +686,7 @@ function aiTurn(){
 btnTrust.addEventListener('click', ()=> resolveAiFaceDown('t'));
 btnCall.addEventListener('click', ()=> resolveAiFaceDown('b'));
 
-function resolveAiFaceDown(call){
+async function resolveAiFaceDown(call){
   trustBar.classList.add('hidden');
   const {played, claim, truth} = G.pending;
   G.pending = null;
@@ -611,7 +705,19 @@ function resolveAiFaceDown(call){
   } else {
     // AI chooses
     if(isZeroSpecial({played, claim, truth})){
-      const aiChoice = G.ai.resolveZeroKeepOrSteal({total:G.total, actor:'AI'});
+      let aiChoice = 's';
+      if (strategistEnabled){
+        const strat = await askStrategist('resolve', { zeroSpecial: true, actor: 'AI', total: G.total, actual: played.value });
+        if (strat && strat.action==='resolve' && (strat.resolution==='k' || strat.resolution==='s')){
+          aiChoice = strat.resolution;
+          const src = strat.meta?.source || 'unknown';
+          log(`[Strategist:${src}] resolve (zero): ${aiChoice==='k'?'keep':'steal'}`);
+        } else {
+          aiChoice = G.ai.resolveZeroKeepOrSteal({total:G.total, actor:'AI'});
+        }
+      } else {
+        aiChoice = G.ai.resolveZeroKeepOrSteal({total:G.total, actor:'AI'});
+      }
       if(aiChoice==='k'){
         G.total += played.value;
         G.aiPlayed.push(played);
@@ -623,7 +729,19 @@ function resolveAiFaceDown(call){
       log(`AI chooses to ${aiChoice==='k'? 'Keep' : 'Steal'}. Revealed 0 (truth). Total: ${G.total}.`);
       setMessage(`AI chooses to ${aiChoice==='k'? 'Keep' : 'Steal'}. Revealed: 0. Total: ${G.total}`);
     } else {
-  const dec = G.ai.resolveKeepOrLose(played.value, claim, {total:G.total, called:call, truth, actor:'AI'});
+  let dec = null;
+  if (strategistEnabled){
+    const strat = await askStrategist('resolve', { actor: 'AI', total: G.total, actual: played.value, claim, truth });
+    if (strat && strat.action==='resolve' && (strat.resolution==='k' || strat.resolution==='l')){
+      dec = strat.resolution;
+      const src = strat.meta?.source || 'unknown';
+      log(`[Strategist:${src}] resolve: ${dec==='k'?'keep':'lose'}`);
+    } else {
+      dec = G.ai.resolveKeepOrLose(played.value, claim, {total:G.total, called:call, truth, actor:'AI'});
+    }
+  } else {
+    dec = G.ai.resolveKeepOrLose(played.value, claim, {total:G.total, called:call, truth, actor:'AI'});
+  }
   if(dec==='k'){ G.total += played.value; }
   G.aiPlayed.push(played);
   if(dec==='k'){ G.tableOrder.push(played); }

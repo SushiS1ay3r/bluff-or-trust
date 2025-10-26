@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Trust or Bluff — Card Game</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -15,6 +16,10 @@
       </div>
       <div class="header-actions">
         <button id="newGame" class="btn primary">Reset</button>
+        <label class="toggle">
+          <input type="checkbox" id="strategistToggle" />
+          <span>Strategist</span>
+        </label>
       </div>
     </header>
 
@@ -34,7 +39,7 @@
 
       <section class="board">
         <div class="ai-area">
-          <h2>AI</h2>
+          <h2>Robo-Bot</h2>
           <div id="aiHand" class="hand" title="AI hand (hidden)"></div>
           <div id="aiPlay" class="play"></div>
           <div class="pileWrap">

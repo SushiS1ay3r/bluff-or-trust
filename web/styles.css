@@ -6,6 +6,8 @@ header h1{margin:0 0 4px;font-size:28px}
 .subtitle{margin:0;color:#9fb3ff;letter-spacing:.8px;word-spacing:1px;margin-bottom:12px}
 .header-left{display:flex;flex-direction:column}
 .header-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
+.toggle{display:flex;align-items:center;gap:6px;color:#c9d4ff;font-size:14px}
+.toggle input{accent-color:#2f66ff}
 .status{background:#121a2b;border:1px solid #223055;border-radius:10px;padding:12px;margin-bottom:16px}
 .status .row{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
 .status .big-total{font-size:32px;font-weight:800;color:#ffda6b}
