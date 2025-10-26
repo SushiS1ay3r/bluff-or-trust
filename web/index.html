@@ -4,15 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Trust or Bluff — Card Game</title>
-  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="logo.png" type="image/png">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div class="card-rain" aria-hidden="true"></div>
   <div class="app">
     <header>
       <div class="header-left">
-        <h1>Trust or Bluff</h1>
-        <p class="subtitle">Reach over 9 and you lose</p>
+        <div class="brand">
+          <img src="logo.png" alt="Trust or Bluff logo" class="brand-logo">
+          <div class="brand-text">
+            <h1>Trust or Bluff</h1>
+            <p class="subtitle">Reach over 9 and you lose</p>
+          </div>
+        </div>
       </div>
       <div class="header-actions">
         <button id="newGame" class="btn primary">Reset</button>
@@ -39,7 +45,7 @@
             </div>
             <div class="row">
               <div>You — Wins: <span id="humanWins">0</span></div>
-              <div>AI — Wins: <span id="aiWins">0</span></div>
+              <div>&nbsp;AI — Wins: <span id="aiWins">0</span></div>
             </div>
           </div>
           <aside id="strategistPanel" class="strategist-panel" aria-live="polite">

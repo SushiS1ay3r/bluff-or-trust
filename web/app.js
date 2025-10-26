@@ -90,8 +90,6 @@ class AdaptiveAI extends PlayerBase{
     const x = ctx.total + actual;
     // If keeping would bust: decide based on whose card it is
     if (x > TOTAL_TARGET) {
-      // If the card belongs to the opponent (ctx.actor === 'Human'), keeping makes them lose immediately
-      // If the card is AI's own, keeping would make AI lose -> avoid
       return ctx.actor === 'Human' ? 'k' : 'l';
     }
     const margin = TOTAL_TARGET - x; // how far from bust after keeping
@@ -453,6 +451,7 @@ function renderOrder(container, pile){
 }
 
 function startNewRound(){
+  try{ if(nextTurnTimer){ clearTimeout(nextTurnTimer); nextTurnTimer = null; } }catch(e){}
   G = new Game();
   selectedValue = null;
   awaitingClaim = false;
@@ -842,7 +841,7 @@ async function resolveAiFaceDown(call){
     lastPendingActor = 'AI';
     keepLoseBar.classList.remove('hidden');
     setDecisionButtonsForPending();
-  setMessage((call==='t'? 'You trusted correctly. ' : 'You called bluff correctly. ') + 'Choose Keep or ' + (isZeroSpecial(G.pending)? 'Steal.' : 'Lose.'));
+    setMessage((call==='t'? 'You trusted correctly. ' : 'You called bluff correctly. ') + 'Choose Keep or ' + (isZeroSpecial(G.pending)? 'Steal.' : 'Lose.'));
   } else {
     // AI chooses
     if(isZeroSpecial({played, claim, truth})){
@@ -896,9 +895,51 @@ async function resolveAiFaceDown(call){
   }
 }
 
-btnNew.addEventListener('click', ()=>{
+function initCardRain(){
+  const container = document.querySelector('.card-rain');
+  if(!container) return;
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) return;
+
+  const types = ['uno','tarot','poker'];
+  const count = Math.min(36, Math.max(18, Math.floor(window.innerWidth / 40)));
+  for(let i=0;i<count;i++){
+    const t = types[Math.floor(Math.random()*types.length)];
+    const outer = document.createElement('div');
+    outer.className = 'rain-card';
+
+    const inner = document.createElement('div');
+    inner.className = 'rc-inner';
+
+    const face = document.createElement('div');
+    face.className = `rc-face ${t}`;
+
+    inner.appendChild(face);
+    outer.appendChild(inner);
+    container.appendChild(outer);
+
+    const x = (Math.random()*100).toFixed(2) + 'vw';
+    const size = (28 + Math.random()*36).toFixed(0) + 'px'; // subtle sizes
+    const rot = (Math.random()*40 - 20).toFixed(1);         // -20..20 deg
+    const dur = (12 + Math.random()*16).toFixed(1) + 's';   // 12..28s fall
+    const sway = (3 + Math.random()*5).toFixed(1) + 's';    // 3..8s sway
+    const delay = (-Math.random()*dur.replace('s','')).toFixed(1) + 's'; // negative to stagger
+    const op = (0.12 + Math.random()*0.12).toFixed(2);      // 0.12..0.24
+
+    outer.style.setProperty('--x', x);
+    outer.style.setProperty('--dur', dur);
+    outer.style.setProperty('--delay', delay);
+    inner.style.setProperty('--size', size);
+    inner.style.setProperty('--swayDur', sway);
+    face.style.setProperty('--rot', rot+'deg');
+    face.style.setProperty('--op', op);
+  }
+}
+
+// Reset button (safety: clear timers and prevent default)
+btnNew.addEventListener('click', (e)=>{
+  e?.preventDefault?.();
   roundNum = 1;
-  // Reset win counters on full reset
   humanWins = 0;
   aiWins = 0;
   startNewRound();
@@ -912,4 +953,5 @@ if(overlayAgainEl){
 }
 
 // bootstrap
+initCardRain();
 startNewRound();
