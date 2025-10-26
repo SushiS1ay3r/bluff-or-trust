@@ -9,8 +9,21 @@ header h1{margin:0 0 4px;font-size:28px}
 .toggle{display:flex;align-items:center;gap:6px;color:#c9d4ff;font-size:14px}
 .toggle input{accent-color:#2f66ff}
 .status{background:#121a2b;border:1px solid #223055;border-radius:10px;padding:12px;margin-bottom:16px}
+.status-wrap{display:flex;gap:16px;align-items:stretch}
+.status-main{flex:1;min-width:0}
+.strategist-panel{width:280px;min-height:120px;background:#0f1728;border:1px solid #223055;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.sp-head{display:flex;align-items:center;justify-content:space-between}
+.sp-title{font-weight:800;color:#9fb3ff}
+.sp-status{font-size:11px;border:1px solid #33508e;border-radius:999px;padding:2px 8px;color:#c9d4ff;background:#1b2a4a;text-transform:uppercase;letter-spacing:.6px}
+.sp-status.on{background:#114a2c;border-color:#1d7a45;color:#baf5d0}
+.sp-status.off{opacity:.7}
+.sp-feed{margin:0;padding-left:18px;max-height:140px;overflow:auto}
+.sp-feed li{color:#c9d4ff;margin-bottom:4px}
+.sp-feed li.muted{opacity:.65;font-style:italic}
 .status .row{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
 .status .big-total{font-size:32px;font-weight:800;color:#ffda6b}
+.app.heat .status{background:#162246;border-color:#2c4280;box-shadow:0 0 0 2px rgba(47,102,255,.12) inset}
+.app.heat .status .big-total{color:#ffd24a;animation:pulse 1.2s ease-in-out infinite}
 .message{margin:0 0 8px;color:#ffda6b;font-size:20px;font-weight:800;letter-spacing:.3px}
 .board{display:grid;grid-template-columns:1fr;gap:16px}
 @media(min-width:800px){.board{grid-template-columns:1fr 1fr}}
@@ -27,7 +40,7 @@ h2{margin-top:0}
 .card::before{content:attr(data-shape);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:64px;color:rgba(0,0,0,.35);pointer-events:none;transform:scale(1.2)}
 .card .bignum{position:relative;z-index:1;font-size:36px;font-weight:800;line-height:1.1;text-shadow:0 2px 2px rgba(0,0,0,.25)}
 .card.back{background:#0d0f16;border-color:#2a2f40;color:#e6ebff}
-.card.back::before{content:'?';color:rgba(255,255,255,.18)}
+.card.back::before{content:''}
 .card.back .bignum{color:#e6ebff}
 .card:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(0,0,0,.25)}
 .card.disabled{opacity:.5;cursor:not-allowed}
@@ -66,6 +79,10 @@ h2{margin-top:0}
 .history h3{margin:0 0 8px}
 .history ol{margin:0;padding-left:18px;max-height:220px;overflow:auto}
 .history li{color:#c9d4ff;margin-bottom:4px}
+.history li.reveal{font-weight:700}
+.history li.reveal.truth{color:#aee4a4}
+.history li.reveal.lie{color:#ff9b9b}
+.history li.reveal.latest{filter:drop-shadow(0 0 6px rgba(255,218,107,.35))}
 
 /* Table (global sequence of played cards) */
 .table{margin-top:16px;background:#121a2b;border:1px solid #223055;border-radius:10px;padding:12px}
@@ -77,5 +94,10 @@ h2{margin-top:0}
 .overlay.hidden{display:none}
 .overlay-box{background:linear-gradient(180deg,#142042,#0d1733);border:1px solid #3a56a1;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.45);padding:28px 36px;max-width:80vw}
 .overlay-msg{font-size:40px;font-weight:900;letter-spacing:.5px;color:#ffda6b;text-align:center;text-shadow:0 3px 10px rgba(0,0,0,.45)}
+
+/* Heat pulse and reveal shake */
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.04)}100%{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-2px)}40%{transform:translateX(2px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
+.app.shake{animation:shake .65s ease}
 
 

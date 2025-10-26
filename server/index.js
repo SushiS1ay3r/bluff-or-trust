@@ -18,16 +18,17 @@ if (OPENAI_API_KEY) {
 }
 
 // Helper: build a strict system prompt with desired JSON schema
-const systemPrompt = `You are a concise strategist for a simple 0-3 card game aiming to avoid exceeding total 9. 
-Return STRICT JSON only (no prose) following the schema for the given context.
+const systemPrompt = `You are a concise strategist for a simple 0-3 card game aiming to avoid exceeding total 9.
+Return STRICT JSON only (no prose) following the schema for the given context. Include a short "reason" string explaining the choice.
 Contexts and output schemas:
-- choosePlay: {"action":"choosePlay","recommend":{"mode":"up|down","claim":0|1|2|3}}
-- decideOnBluff: {"action":"decideOnBluff","trustCall":"t|b"}
-- resolve: {"action":"resolve","resolution":"k|l|s"}
+- choosePlay: {"action":"choosePlay","recommend":{"mode":"up|down","claim":0|1|2|3},"reason":"short why"}
+- decideOnBluff: {"action":"decideOnBluff","trustCall":"t|b","reason":"short why"}
+- resolve: {"action":"resolve","resolution":"k|l|s","reason":"short why"}
 Rules:
+- Keep reason concise (<= 100 chars). Plain text, no markdown.
 - If mode is "down", include a claimed value between 0 and 3.
 - If zero special applies in resolve, you may return "s" to steal.
-- Do NOT include any commentary. Output JSON ONLY.`;
+- Do NOT include any commentary outside JSON. Output JSON ONLY.`;
 
 // Fallback simple policy if model unavailable or invalid response
 function fallbackStrategy(context, summary) {
@@ -36,20 +37,32 @@ function fallbackStrategy(context, summary) {
     const risky = summary?.ai?.riskyCount ?? 0;
     const mode = risky > 0 ? 'down' : 'up';
     const claim = Math.max(0, Math.min(3, (summary?.safeClaim ?? 1)));
-    return { action: 'choosePlay', recommend: { mode, claim } };
+    const reason = mode === 'down'
+      ? `Risky hand (${risky} risky). Bluff with claim ${claim} to avoid bust.`
+      : `Safe to play face-up; avoid spending a bluff now.`;
+    return { action: 'choosePlay', recommend: { mode, claim }, reason };
   }
   if (context === 'decideOnBluff') {
     const expect = (summary?.total ?? 0) + (summary?.opponentClaim ?? 0);
     const call = expect / 9 - 0.4 > 0.0 ? 'b' : 't';
-    return { action: 'decideOnBluff', trustCall: call };
+    const reason = call === 'b'
+      ? `Expected total ${expect} is high; calling reduces bust risk.`
+      : `Expected total ${expect} is manageable; conserve challenge.`;
+    return { action: 'decideOnBluff', trustCall: call, reason };
   }
   // resolve
   const x = (summary?.total ?? 0) + (summary?.actual ?? 0);
-  if (summary?.zeroSpecial) return { action: 'resolve', resolution: 's' };
-  if (x > 9) return { action: 'resolve', resolution: summary?.actor === 'Human' ? 'k' : 'l' };
+  if (summary?.zeroSpecial) return { action: 'resolve', resolution: 's', reason: 'Steal 0 for future safety play.' };
+  if (x > 9) return { action: 'resolve', resolution: summary?.actor === 'Human' ? 'k' : 'l', reason: 'Keeping busts the owner of the card.' };
   const margin = 9 - x;
-  if (summary?.actor === 'AI') return { action: 'resolve', resolution: margin <= 1 ? 'k' : (margin >= 4 ? 'l' : 'k') };
-  return { action: 'resolve', resolution: margin <= 1 ? 'l' : (margin >= 4 ? 'k' : 'l') };
+  if (summary?.actor === 'AI') {
+    const res = margin <= 1 ? 'k' : (margin >= 4 ? 'l' : 'k');
+    const reason = res === 'k' ? `Corner Human with total ${9 - margin}.` : 'Low pressure; conserve options.';
+    return { action: 'resolve', resolution: res, reason };
+  }
+  const res = margin <= 1 ? 'l' : (margin >= 4 ? 'k' : 'l');
+  const reason = res === 'k' ? 'Low total; safe to keep.' : `Avoid leaving tough total (${9 - margin}).`;
+  return { action: 'resolve', resolution: res, reason };
 }
 
 app.post('/api/strategy', async (req, res) => {

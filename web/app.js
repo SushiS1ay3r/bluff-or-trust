@@ -184,12 +184,15 @@ const overlayAgainEl = el('#overlayAgain');
 const strategistToggleEl = el('#strategistToggle');
 const humanWinsEl = el('#humanWins');
 const aiWinsEl = el('#aiWins');
+const strategistFeedEl = el('#strategistFeed');
+const spStatusEl = el('#spStatus');
 
 let strategistEnabled = false;
 if (strategistToggleEl) {
   strategistToggleEl.addEventListener('change', () => {
     strategistEnabled = !!strategistToggleEl.checked;
     log(`Strategist ${strategistEnabled ? 'enabled' : 'disabled'}.`);
+    try{ render(); }catch(e){}
   });
 }
 
@@ -200,6 +203,7 @@ let lastPendingActor = null;
 let awaitingClaim = false; // only show claim options when face-down is chosen
 let humanWins = 0;
 let aiWins = 0;
+let nextTurnTimer = null;
 
 function displayValue(v){ return `${v}`; }
 
@@ -212,6 +216,38 @@ function render(){
   aiBluffsEl.textContent = G.ai.bluffs;
   if (humanWinsEl) humanWinsEl.textContent = humanWins;
   if (aiWinsEl) aiWinsEl.textContent = aiWins;
+  // Heat meter
+  const root = document.querySelector('.app');
+  if (root){
+    if (G.total >= 7) root.classList.add('heat'); else root.classList.remove('heat');
+  }
+
+  // Strategist panel: reflect enabled state and show recent strategist insights
+  if (spStatusEl){
+    spStatusEl.textContent = strategistEnabled ? 'on' : 'off';
+    spStatusEl.classList.toggle('on', strategistEnabled);
+    spStatusEl.classList.toggle('off', !strategistEnabled);
+  }
+  if (strategistFeedEl){
+    strategistFeedEl.innerHTML = '';
+    // Only show concise reasoning lines; suppress action-tag logs entirely
+    const allStrat = G.history.filter(l => l.startsWith('[Strategist:'));
+    const reasonLines = allStrat.filter(l => !/(choosePlay|decideOnBluff|resolve)/i.test(l));
+    const lines = reasonLines.slice(-8);
+    if (strategistEnabled){
+      if (lines.length){
+        lines.forEach(line =>{
+          const li = document.createElement('li');
+          li.textContent = line.replace(/^\[Strategist:[^\]]+\]\s*/, '');
+          strategistFeedEl.appendChild(li);
+        });
+      } else {
+        const li = document.createElement('li'); li.className = 'muted'; li.textContent = 'Waiting for insights…'; strategistFeedEl.appendChild(li);
+      }
+    } else {
+      const li = document.createElement('li'); li.className = 'muted'; li.textContent = 'Strategist is off.'; strategistFeedEl.appendChild(li);
+    }
+  }
 
   // Human hand
   humanHandEl.innerHTML = '';
@@ -241,7 +277,8 @@ function render(){
   for(let i=0;i<G.ai.hand.length;i++){
     const back = document.createElement('div');
     back.className = 'card back';
-    back.setAttribute('data-shape','?');
+    // Empty background shape so only the center '?' shows
+    back.setAttribute('data-shape','');
     back.innerHTML = `<div class="bignum">?<\/div>`;
     aiHandEl.appendChild(back);
   }
@@ -250,7 +287,8 @@ function render(){
   if(G.pending && G.pending.actor==='AI'){
     const back = document.createElement('div');
     back.className = 'card back';
-    back.setAttribute('data-shape','?');
+    // Empty background shape so only the center '?' shows
+    back.setAttribute('data-shape','');
     back.innerHTML = `<div class="bignum">?<\/div>`;
     aiPlayEl.appendChild(back);
   }
@@ -262,13 +300,22 @@ function render(){
   // Render global table sequence as mini cards (like on-table pile)
   renderPile(tableEl, G.tableOrder);
 
-  // Render history
+  // Render history with reveal highlighting
   historyEl.innerHTML = '';
+  let lastRevealLi = null;
   G.history.slice(-50).forEach(line=>{
     const li = document.createElement('li');
     li.textContent = line;
+    const lower = line.toLowerCase();
+    if (lower.includes('revealed')){
+      li.classList.add('reveal');
+      if (lower.includes('lied')) li.classList.add('lie');
+      if (lower.includes('truth')) li.classList.add('truth');
+      lastRevealLi = li;
+    }
     historyEl.appendChild(li);
   });
+  if (lastRevealLi){ lastRevealLi.classList.add('latest'); }
 
   // Control bars visibility based on state
   if(G.over){
@@ -288,6 +335,8 @@ function render(){
       claimBar.style.display = 'none';
     }
   }
+
+  // Odds hint removed
 }
 
 function setMessage(txt){ msgEl.textContent = txt || ''; }
@@ -332,6 +381,8 @@ async function askStrategist(context, extra){
   }catch(err){
     clearTimeout(t);
     log('Strategist unavailable, using default.');
+    // Surface a concise strategist-style notice so the panel isn't empty
+    log('[Strategist:local] Strategist server offline; using local AI.');
     return null;
   }
 }
@@ -430,6 +481,14 @@ function proceedTurn(){
   }
 }
 
+function scheduleNextTurn(ms=1800){
+  try{ if(nextTurnTimer) clearTimeout(nextTurnTimer); }catch(e){}
+  nextTurnTimer = setTimeout(()=>{
+    nextTurnTimer = null;
+    proceedTurn();
+  }, ms);
+}
+
 // Ensure no one is stuck without cards: if either hand is empty, deal one card to that player (rebuild deck if needed)
 function ensureHandsHaveCards(){
   let dealt = false;
@@ -477,6 +536,39 @@ function checkOverflow(actorName){
   return false;
 }
 
+// Simple SFX tick on total increases
+let __audioCtx = null;
+function playTick(){
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!__audioCtx) __audioCtx = new AC();
+    if (__audioCtx.state === 'suspended') __audioCtx.resume();
+    const osc = __audioCtx.createOscillator();
+    const gain = __audioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(660, __audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.0001, __audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.05, __audioCtx.currentTime+0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, __audioCtx.currentTime+0.08);
+    osc.connect(gain); gain.connect(__audioCtx.destination);
+    osc.start();
+    osc.stop(__audioCtx.currentTime+0.09);
+  }catch(e){}
+}
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+async function doRevealEffect(){
+  const root = document.querySelector('.app');
+  if (root){
+    root.classList.add('shake');
+    await sleep(650);
+    root.classList.remove('shake');
+  } else {
+    await sleep(650);
+  }
+}
+
 // Human actions
 btnPlayUp.addEventListener('click', ()=>{
   if(G.turn!=='Human' || selectedValue==null) return;
@@ -488,11 +580,12 @@ btnPlayUp.addEventListener('click', ()=>{
   G.humanPlayed.push(played);
   G.tableOrder.push(played);
   G.total += played.value;
+  playTick();
   log(`Total is now ${G.total}.`);
   if(checkOverflow('Human')) return;
   G.turn = 'AI';
   selectedValue = null;
-  proceedTurn();
+  scheduleNextTurn();
 });
 
 btnPlayDown.addEventListener('click', ()=>{
@@ -523,7 +616,7 @@ document.querySelectorAll('.claim').forEach(btn=>{
       if (strat && strat.action==='decideOnBluff' && (strat.trustCall==='t' || strat.trustCall==='b')){
         decision = strat.trustCall;
         const src = strat.meta?.source || 'unknown';
-        log(`[Strategist:${src}] decideOnBluff: ${decision==='t'?'trust':'call'}`);
+        if (strat.reason) log(`[Strategist:${src}] ${strat.reason}`);
       } else {
         decision = G.ai.decideOnBluff(claim, G.total);
       }
@@ -543,6 +636,8 @@ document.querySelectorAll('.claim').forEach(btn=>{
     const chooser = correct? 'AI' : 'Human';
     // if trusted correctly, AI gains bluff
     if(decision==='t' && truth){ G.ai.bluffs += 1; }
+  // if AI trusted and you were lying, reward you +1 bluff
+  if(decision==='t' && !truth){ G.human.bluffs += 1; log('Bluff reward: You gain +1 bluff.'); }
 
     if(chooser==='Human'){
       // human chooses keep/lose or steal (zero special)
@@ -554,9 +649,10 @@ document.querySelectorAll('.claim').forEach(btn=>{
     } else {
       // AI chooses (may use zero special)
       if(isZeroSpecial({played, claim, truth})){
+        await doRevealEffect();
         const aiChoice = G.ai.resolveZeroKeepOrSteal({total:G.total, actor:'Human'});
         if(aiChoice==='k'){
-          G.total += played.value;
+          G.total += played.value; playTick();
           G.humanPlayed.push(played);
           G.tableOrder.push(played);
         } else {
@@ -566,23 +662,27 @@ document.querySelectorAll('.claim').forEach(btn=>{
         log(`Your card revealed ${played.value} (truth; claimed 0). AI chose to ${aiChoice==='k'?'Keep':'Steal'}. Total: ${G.total}.`);
         setMessage(`AI chooses to ${aiChoice==='k'?'Keep':'Steal'}. Revealed: 0. Total: ${G.total}`);
       } else {
+  await doRevealEffect();
   const dec = G.ai.resolveKeepOrLose(played.value, claim, {total:G.total, called:decision, truth, actor:'Human'});
   if(dec==='k'){ G.total += played.value; }
+  if(dec==='k'){ playTick(); }
   G.humanPlayed.push(played);
   if(dec==='k'){ G.tableOrder.push(played); }
         log(`Your card revealed ${played.value} (${truth? 'truth' : `lied; claimed ${claim}`}). AI chose to ${dec==='k'? 'Keep' : 'Lose'}. Total: ${G.total}.`);
         setMessage(`AI chooses to ${dec==='k'? 'Keep' : 'Lose'}. Revealed: ${displayValue(played.value)}${truth? ' (truth)' : ` (lied; claimed ${displayValue(claim)})`}. Total: ${G.total}`);
       }
       if(checkOverflow('Human')) return; // actor is human here
-      G.turn = 'AI';
-      proceedTurn();
+  G.turn = 'AI';
+  scheduleNextTurn();
     }
   });
 });
 
-btnKeep.addEventListener('click', ()=>{
+btnKeep.addEventListener('click', async ()=>{
   if(!G.pending) return;
+  await doRevealEffect();
   G.total += G.pending.played.value;
+  playTick();
   const {played, claim, truth} = G.pending;
   keepLoseBar.classList.add('hidden');
   G.pending = null;
@@ -611,11 +711,12 @@ btnKeep.addEventListener('click', ()=>{
   if(checkOverflow(lastPendingActor||'Human')) return;
   // Next turn depends on whose card this was
   G.turn = (lastPendingActor === 'AI') ? 'Human' : 'AI';
-  proceedTurn();
+  scheduleNextTurn();
 });
 
-btnLose.addEventListener('click', ()=>{
+btnLose.addEventListener('click', async ()=>{
   if(!G.pending) return;
+  await doRevealEffect();
   const {played, claim, truth} = G.pending;
   keepLoseBar.classList.add('hidden');
   G.pending = null;
@@ -630,11 +731,12 @@ btnLose.addEventListener('click', ()=>{
   if(checkOverflow(lastPendingActor||'Human')) return;
   // Next turn depends on whose card this was
   G.turn = (lastPendingActor === 'AI') ? 'Human' : 'AI';
-  proceedTurn();
+  scheduleNextTurn();
 });
 
-btnSteal.addEventListener('click', ()=>{
+btnSteal.addEventListener('click', async ()=>{
   if(!G.pending) return;
+  await doRevealEffect();
   const {played, claim, truth} = G.pending;
   if(!(truth && claim===0 && played && played.value===0)){
     return; // only valid for zero special
@@ -655,7 +757,7 @@ btnSteal.addEventListener('click', ()=>{
   if(checkOverflow(lastPendingActor||'Human')) return;
   // Next turn depends on whose card this was
   G.turn = (lastPendingActor === 'AI') ? 'Human' : 'AI';
-  proceedTurn();
+  scheduleNextTurn();
 });
 
 // AI turn
@@ -678,7 +780,9 @@ async function aiTurn(){
         }
         usedStrategist = true;
         const src = strat.meta?.source || 'unknown';
-        log(`[Strategist:${src}] choosePlay: mode=up`);
+        if (strat.reason) log(`[Strategist:${src}] ${strat.reason}`);
+        // Clarify when the advisor gives a general "up" but a specific value isn't enforced
+        log(`[Strategist:client] Advisor said play up; chose ${decision.real.value} from current hand.`);
       } else if (rec.mode === 'down' && G.ai.bluffs>0){
         const real = G.ai.hand[Math.floor(Math.random()*G.ai.hand.length)];
         const idx = G.ai.hand.indexOf(real);
@@ -688,7 +792,8 @@ async function aiTurn(){
         decision = { mode:'down', real: played, claim };
         usedStrategist = true;
         const src = strat.meta?.source || 'unknown';
-        log(`[Strategist:${src}] choosePlay: mode=down claim=${claim}`);
+        if (strat.reason) log(`[Strategist:${src}] ${strat.reason}`);
+        log(`[Strategist:client] Advisor said bluff ${claim}; applied.`);
       }
     }
   }
@@ -697,13 +802,14 @@ async function aiTurn(){
   }
   if(decision.mode==='up'){
     G.total += decision.real.value;
+  playTick();
   setMessage(`AI plays: ${displayValue(decision.real.value)}. Total: ${G.total}`);
   G.aiPlayed.push(decision.real);
   G.tableOrder.push(decision.real);
   log(`AI played ${displayValue(decision.real.value)} face-up. Total: ${G.total}.`);
     if(checkOverflow('AI')) return;
-    G.turn = 'Human';
-    proceedTurn();
+  G.turn = 'Human';
+  scheduleNextTurn();
     return;
   }
   // face-down
@@ -728,6 +834,7 @@ async function resolveAiFaceDown(call){
   const correct = (call==='t' && truth) || (call==='b' && !truth);
   const chooser = correct? 'Human' : 'AI';
   if(call==='t' && truth){ G.human.bluffs += 1; }
+  if(call==='t' && !truth){ G.ai.bluffs += 1; log('Bluff reward: AI gains +1 bluff.'); }
 
   if(chooser==='Human'){
     // human chooses
@@ -735,7 +842,7 @@ async function resolveAiFaceDown(call){
     lastPendingActor = 'AI';
     keepLoseBar.classList.remove('hidden');
     setDecisionButtonsForPending();
-    setMessage((call==='t'? 'You trusted correctly. ' : 'You called bluff wrongly. ') + 'Choose Keep or ' + (isZeroSpecial(G.pending)? 'Steal.' : 'Lose.'));
+  setMessage((call==='t'? 'You trusted correctly. ' : 'You called bluff correctly. ') + 'Choose Keep or ' + (isZeroSpecial(G.pending)? 'Steal.' : 'Lose.'));
   } else {
     // AI chooses
     if(isZeroSpecial({played, claim, truth})){
@@ -745,7 +852,7 @@ async function resolveAiFaceDown(call){
         if (strat && strat.action==='resolve' && (strat.resolution==='k' || strat.resolution==='s')){
           aiChoice = strat.resolution;
           const src = strat.meta?.source || 'unknown';
-          log(`[Strategist:${src}] resolve (zero): ${aiChoice==='k'?'keep':'steal'}`);
+          if (strat.reason) log(`[Strategist:${src}] ${strat.reason}`);
         } else {
           aiChoice = G.ai.resolveZeroKeepOrSteal({total:G.total, actor:'AI'});
         }
@@ -753,7 +860,7 @@ async function resolveAiFaceDown(call){
         aiChoice = G.ai.resolveZeroKeepOrSteal({total:G.total, actor:'AI'});
       }
       if(aiChoice==='k'){
-        G.total += played.value;
+        G.total += played.value; playTick();
         G.aiPlayed.push(played);
         G.tableOrder.push(played);
       } else {
@@ -769,7 +876,7 @@ async function resolveAiFaceDown(call){
     if (strat && strat.action==='resolve' && (strat.resolution==='k' || strat.resolution==='l')){
       dec = strat.resolution;
       const src = strat.meta?.source || 'unknown';
-      log(`[Strategist:${src}] resolve: ${dec==='k'?'keep':'lose'}`);
+      if (strat.reason) log(`[Strategist:${src}] ${strat.reason}`);
     } else {
       dec = G.ai.resolveKeepOrLose(played.value, claim, {total:G.total, called:call, truth, actor:'AI'});
     }
@@ -777,14 +884,15 @@ async function resolveAiFaceDown(call){
     dec = G.ai.resolveKeepOrLose(played.value, claim, {total:G.total, called:call, truth, actor:'AI'});
   }
   if(dec==='k'){ G.total += played.value; }
+  if(dec==='k'){ playTick(); }
   G.aiPlayed.push(played);
   if(dec==='k'){ G.tableOrder.push(played); }
       log(`AI chooses to ${dec==='k'? 'Keep' : 'Lose'}. Revealed ${played.value}${truth? ' (truth)' : ` (lied; claimed ${claim})`}. Total: ${G.total}.`);
       setMessage(`AI chooses to ${dec==='k'? 'Keep' : 'Lose'}. Revealed: ${displayValue(played.value)}${truth? ' (truth)' : ` (lied; claimed ${displayValue(claim)})`}. Total: ${G.total}`);
     }
     if(checkOverflow('AI')) return;
-    G.turn = 'Human';
-    proceedTurn();
+  G.turn = 'Human';
+  scheduleNextTurn();
   }
 }
 
