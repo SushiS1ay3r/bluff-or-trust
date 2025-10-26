@@ -26,6 +26,9 @@ header h1{margin:0 0 4px;font-size:28px}
 .sp-feed li{color:#c9d4ff;margin-bottom:4px}
 .sp-feed li.muted{opacity:.65;font-style:italic}
 .status .row{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+/* Align the top status row (Total / Round / Turn) by baseline and nudge non-total items */
+.status-main .row:first-of-type{ align-items: baseline; }
+.status-main .row:first-of-type > div:not(:first-child){ transform: translateY(2px); }
 .status .big-total{font-size:32px;font-weight:800;color:#ffda6b}
 .app.heat .status{background:#162246;border-color:#2c4280;box-shadow:0 0 0 2px rgba(47,102,255,.12) inset}
 .app.heat .status .big-total{color:#ffd24a;animation:pulse 1.2s ease-in-out infinite}
@@ -194,5 +197,8 @@ h2{margin-top:0}
 @media (prefers-reduced-motion: reduce){
   .card-rain{ display:none; }
 }
+.ai-head{display:flex;align-items:center;gap:8px}
+/* Nudge the Strategist toggle slightly upward */
+.ai-head .toggle{transform:translateY(-6px)}
 
 
