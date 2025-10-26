@@ -9,8 +9,17 @@ const SHAPES = {0:'♣',1:'♦',2:'♥',3:'♠'};
 const THEME_CLASS = {0:'theme-v0',1:'theme-v1',2:'theme-v2',3:'theme-v3'};
 
 function shuffle(arr){
+  // Fisher–Yates with crypto-backed randomness when available
+  const randInt = (n)=>{
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+      const buf = new Uint32Array(1);
+      window.crypto.getRandomValues(buf);
+      return buf[0] % n;
+    }
+    return Math.floor(Math.random()*n);
+  };
   for(let i=arr.length-1;i>0;i--){
-    const j = Math.floor(Math.random()* (i+1));
+    const j = randInt(i+1);
     [arr[i],arr[j]] = [arr[j],arr[i]];
   }
   return arr;
@@ -121,6 +130,8 @@ class Game{
       this.human.giveCard(this.deck.pop());
       this.ai.giveCard(this.deck.pop());
     }
+    // Integrity check: ensure no duplicate object ids are in both hands
+    verifyNoDuplicateCards(this.human.hand, this.ai.hand);
     this.over = false;
     this.msg = '';
     this.pending = null; // used for multi-step sequences
@@ -129,6 +140,15 @@ class Game{
     this.aiPlayed = [];
     this.tableOrder = [];
   }
+}
+
+// Debug/Integrity helper: ensure dealt cards are unique objects (by id)
+function verifyNoDuplicateCards(humanHand, aiHand){
+  try{
+    const ids = new Set();
+    for(const c of humanHand){ if(c?.id){ ids.add(c.id); } }
+    for(const c of aiHand){ if(c?.id && ids.has(c.id)){ console.warn('Integrity warning: duplicate card id found across hands:', c); } }
+  }catch(e){ /* no-op */ }
 }
 
 // UI Helpers
@@ -162,6 +182,8 @@ const overlayEl = el('#overlay');
 const overlayMsgEl = el('#overlayMsg');
 const overlayAgainEl = el('#overlayAgain');
 const strategistToggleEl = el('#strategistToggle');
+const humanWinsEl = el('#humanWins');
+const aiWinsEl = el('#aiWins');
 
 let strategistEnabled = false;
 if (strategistToggleEl) {
@@ -176,6 +198,8 @@ let selectedValue = null; // value user picked (0..3)
 let roundNum = 1;
 let lastPendingActor = null;
 let awaitingClaim = false; // only show claim options when face-down is chosen
+let humanWins = 0;
+let aiWins = 0;
 
 function displayValue(v){ return `${v}`; }
 
@@ -186,6 +210,8 @@ function render(){
   turnEl.textContent = G.turn;
   humanBluffsEl.textContent = G.human.bluffs;
   aiBluffsEl.textContent = G.ai.bluffs;
+  if (humanWinsEl) humanWinsEl.textContent = humanWins;
+  if (aiWinsEl) aiWinsEl.textContent = aiWins;
 
   // Human hand
   humanHandEl.innerHTML = '';
@@ -422,6 +448,8 @@ function ensureHandsHaveCards(){
       const a = G.deck.pop();
       if(a){ G.ai.giveCard(a); dealt = true; log('Auto-deal: AI draws 1 card.'); }
     }
+    // Post-deal integrity check
+    verifyNoDuplicateCards(G.human.hand, G.ai.hand);
   }
   return dealt;
 }
@@ -434,6 +462,12 @@ function checkOverflow(actorName){
     // Show win/lose popup for 3 seconds
     if(overlayEl && overlayMsgEl){
       const playerLost = (actorName === 'Human');
+      // Increment wins before rendering overlay
+      if (playerLost) {
+        aiWins += 1;
+      } else {
+        humanWins += 1;
+      }
       overlayMsgEl.textContent = playerLost ? 'You lose!' : 'You won!';
       overlayEl.classList.remove('hidden');
     }
@@ -756,6 +790,9 @@ async function resolveAiFaceDown(call){
 
 btnNew.addEventListener('click', ()=>{
   roundNum = 1;
+  // Reset win counters on full reset
+  humanWins = 0;
+  aiWins = 0;
   startNewRound();
 });
 
