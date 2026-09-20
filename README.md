@@ -1,8 +1,5 @@
 TRUST OR BLUFF
 
-Copyright © 2026 Daniel Huang. All rights reserved.
-This repository is made publicly available for portfolio and evaluation purposes only. No permission is granted to copy, modify, distribute, sublicense, or use this source code except as permitted by applicable law and GitHub's Terms of Service.
-
 Summary:
 Trust or Bluff is a high-stakes card game inspired by the anime Kakegurui. In this intense battle, players must navigate a delicate balance between honesty and deception, using their single precious bluff at the perfect moment. Every card played adds to a shared total, and one wrong move could push you over the edge—literally. Will you trust your opponent's claim, or call their bluff and risk the consequences?
 This is not just a game of cards; it's a game of reading your opponent, managing risk, and knowing when to deceive and when to play it straight. The AI learns from your behavior—adapting its strategy to counter your playstyle over multiple rounds.
@@ -69,4 +66,7 @@ STEAL: they player can add the card to their hand
 
 After a bluff or trust is resolved the game continues to the next players turn
 If Players run out of cards before the game total of 9 is exceeded, then each player should draw one additional card from the deck, then continue the game as is
-The total can not go below zero, if losing a card could causes this, then the total remains 0
+The total can not go below zero, if losing a card could causes this, then the total remains 0.
+
+Copyright © 2026 Daniel Huang. All rights reserved.
+This repository is made publicly available for portfolio and evaluation purposes only. No permission is granted to copy, modify, distribute, sublicense, or use this source code except as permitted by applicable law and GitHub's Terms of Service.
