@@ -1,3 +1,6 @@
+Copyright © 2026 Daniel Huang. All rights reserved.
+This repository is made publicly available for portfolio and evaluation purposes only. No permission is granted to copy, modify, distribute, sublicense, or use this source code except as permitted by applicable law and GitHub's Terms of Service.
+
 TRUST OR BLUFF
 
 Summary:
